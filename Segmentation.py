@@ -4,7 +4,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-
+# main process
 [Fs, x] = audioBasicIO.readAudioFile("data/diarizationExample.wav")
 
 TIME_OF_WINDOW = 0.050	#a window = 0.05s
@@ -14,22 +14,18 @@ SIZE_OF_STEP = int(TIME_OF_STEP * Fs)		#the number of frame for one step
 BLOCK_SIZE = 4		#a block has (6 * SIZE_OF_STEP) frame
 BLOCK_STEP = 2
 
-
-
 # variables 
 END_OF_FILE = 0
 FIRST_PAIR = 1
 INDEX_BOUCLE = 1
 
-# feature extraction from the library pyAudioAnalysis
-attribute = audioFeatureExtraction.stFeatureExtraction(x, Fs, SIZE_OF_WINDOW, SIZE_OF_STEP)
-
-# relationship between the similarity and the timestamp in the audio
-relation = [[1 for col in range(2)] for row in range(attribute.shape[1]/BLOCK_STEP)] 
-
-
 def getMFCCs(block_start, block_end):
 	return attribute[8:20,block_start:block_end+1]
+
+def getMFCCsFromTime(moment_start, moment_end):
+	block_start = int(moment_start / BLOCK_STEP / TIME_OF_STEP - 1)
+	block_end = int(moment_end / BLOCK_STEP / TIME_OF_STEP - 1)
+	return getMFCCs(block_start, block_end)
 
 def gauss(x, mean, cov):
 	[n, d] = x.shape
@@ -48,9 +44,12 @@ def gauss(x, mean, cov):
 
 	return y
 
-def getCutpoints(relation):
-	return 0
 
+# feature extraction from the library pyAudioAnalysis
+attribute = audioFeatureExtraction.stFeatureExtraction(x, Fs, SIZE_OF_WINDOW, SIZE_OF_STEP)
+
+# relationship between the similarity and the timestamp in the audio
+relation = [[1 for col in range(2)] for row in range(attribute.shape[1]/BLOCK_STEP)]
 
 while (END_OF_FILE == 0):
 	if (FIRST_PAIR == 1):
@@ -119,21 +118,12 @@ while (END_OF_FILE == 0):
 	if block_j_index_end + BLOCK_STEP > attribute.shape[1]:
 		END_OF_FILE = 1
 
-x = []
-y = []
-
-relation_new = filter(lambda t: t[1] != 1, relation)
-
-for i in xrange(0,len(relation_new)-1):
-	x.append(relation_new[i][0])
-	y.append(relation_new[i][1])
-	
-
-plt.plot(y, x)
-# plt.show()
-
-
-relation_cut = filter(lambda t: t[0] >= 0, relation)
+# cut the audio
+relation_cut = filter(lambda t: t[0] > 0, relation)
 
 for item in relation_cut:
 	print item
+
+
+
+# print getMFCCsFromTime(0.4, 4.0).shape
