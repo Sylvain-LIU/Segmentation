@@ -121,9 +121,119 @@ while (END_OF_FILE == 0):
 # cut the audio
 relation_cut = filter(lambda t: t[0] > 0, relation)
 
+print "=========The data after cutting==========="
 for item in relation_cut:
 	print item
 
 
 
 # print getMFCCsFromTime(0.4, 4.0).shape
+
+
+#===========Kmeans Definition=====================
+#calculate Euclidean distance
+def euclDistance(vector1, vector2):
+	return sqrt(sum(power(vector2 - vector1, 2)))
+
+# init centroids with random samples
+def initCentroids(dataSet, k):
+	numSamples, dim = dataSet.shape
+	centroids = zeros((k, dim))
+	for i in range(k):
+		index = int(random.uniform(0, numSamples))
+		centroids[i, :] = dataSet[index, :]
+	return centroids
+
+# k-means cluster
+def kmeans(dataSet, k):
+	numSamples = dataSet.shape[0]
+	# first column stores which cluster this sample belongs to,
+	# second column stores the error between this sample and its centroid
+	clusterAssment = mat(zeros((numSamples, 2)))
+	clusterChanged = True
+
+	## step 1: init centroids
+	centroids = initCentroids(dataSet, k)
+
+	while clusterChanged:
+		clusterChanged = False
+		## for each sample
+		for i in xrange(numSamples):
+			minDist  = 100000.0
+			minIndex = 0
+			## for each centroid
+			## step 2: find the centroid who is closest
+			for j in range(k):
+				distance = euclDistance(centroids[j, :], dataSet[i, :])
+				if distance < minDist:
+					minDist  = distance
+					minIndex = j
+
+			## step 3: update its cluster
+			if clusterAssment[i, 0] != minIndex:
+				clusterChanged = True
+				clusterAssment[i, :] = minIndex, minDist**2
+
+		## step 4: update centroids
+		for j in range(k):
+			pointsInCluster = dataSet[nonzero(clusterAssment[:, 0].A == j)[0]]
+			centroids[j, :] = mean(pointsInCluster, axis = 0)
+
+	print 'cluster complete!'
+	return centroids, clusterAssment
+
+def abs (input):
+	if input <0 : return - input
+	else : return input
+
+
+
+
+print '======='
+
+temprelation = []
+for i in range(len(relation_cut)-3): #-3 because the last 3 numbers are meaningless
+    temprelation.append([relation_cut[i][0],1])
+
+#temprelation is a list which takes only first colum of relation_cut and add another colum which values are all 1
+#This action alow to transefer the MFCC to a 2-dimension data which use for cluster
+
+
+## step 1: load data
+print "step 1: load data..."
+dataSet = temprelation
+
+
+# step 2: clustering...
+print "step 2: clustering..."
+dataSet = mat(dataSet)
+k = 4
+centroids, clusterAssment = kmeans(dataSet, k)
+classification =[]
+for indexi in range(k):
+	classification .append(centroids[indexi][0])
+
+## step 3: Mark speaker to each block
+relation_cut_regonize = [] #This list is to store the information with different speakers
+for indexj in range(len(dataSet)):
+	min1 = abs(relation_cut[indexj][0]-classification[0])
+	min2 = abs(relation_cut[indexj][0]-classification[1])
+	min3 = abs(relation_cut[indexj][0]-classification[2])
+	min4 = abs(relation_cut[indexj][0]-classification[3])
+	if min1<min2 and min1 < min3 and min1<min4:
+		relation_cut_regonize.append([relation_cut[indexj],"Speaker1"])
+	else:
+		if min2<min1 and min2 < min3 and min2<min4:
+			relation_cut_regonize.append([relation_cut[indexj],"Speaker2"])
+		else:
+			if min3<min1 and min3 < min2 and min3<min4:
+				relation_cut_regonize.append([relation_cut[indexj],"Speak3"])
+			else:
+				if min4<min1 and min4 < min2 and min4<min3:
+					relation_cut_regonize.append([relation_cut[indexj],"Speak4"])
+
+
+#step4: shows the result
+print "=========The data after regonizing as 4 speakers==========="
+for item in relation_cut_regonize:
+	print item
